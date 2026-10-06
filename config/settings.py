@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'raphical',
 ]
 
 MIDDLEWARE = [
@@ -104,7 +105,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/New_York'
 
 USE_I18N = True
 
@@ -115,6 +116,25 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+
+
+# Authentication
+
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'raphical:month'
+LOGOUT_REDIRECT_URL = 'login'
+
+
+# Reminders
+
+# Used to build links in reminder emails.
+SITE_URL = 'http://127.0.0.1:8000'
+DEFAULT_FROM_EMAIL = 'Raphical <calendar@localhost>'
+
+# Web Push (VAPID). The key is generated on first use; keep the file out of git.
+# The subject is sent to browser push services as a contact for this server.
+VAPID_PRIVATE_KEY_FILE = BASE_DIR / 'vapid_private.pem'
+VAPID_SUBJECT = 'mailto:admin@example.com'
 
 
 # Email

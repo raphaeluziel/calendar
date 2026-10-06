@@ -77,6 +77,9 @@ db.sqlite3-journal
 raphidb_backup.sql
 *.sql
 
+# Web Push private key (raphical notifications)
+vapid_private.pem
+
 # Flask stuff:
 instance/
 .webassets-cache

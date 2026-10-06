@@ -1,0 +1,102 @@
+{# The event form on its own: rendered inside the full page or the month page's pop-up. #}
+<form method="post" class="event-form" action="{{ form_action }}"{% if in_series %} data-series{% endif %}>
+  <h2>{% if event.pk %}Edit event{% else %}New event{% endif %}</h2>
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+
+  <div class="field">
+    {{ form.title.label_tag }}{{ form.title }}{{ form.title.errors }}
+  </div>
+
+  <label class="check">{{ form.all_day }} All day</label>
+
+  <div class="row">
+    <div class="field">{{ form.start_date.label_tag }}{{ form.start_date }}{{ form.start_date.errors }}</div>
+    <div class="field time-field">{{ form.start_time.label_tag }}{{ form.start_time }}{{ form.start_time.errors }}</div>
+  </div>
+  <div class="row">
+    <div class="field">{{ form.end_date.label_tag }}{{ form.end_date }}{{ form.end_date.errors }}</div>
+    <div class="field time-field">{{ form.end_time.label_tag }}{{ form.end_time }}{{ form.end_time.errors }}</div>
+  </div>
+
+  <div class="field">
+    {{ form.repeat.label_tag }}{{ form.repeat }}{{ form.repeat.errors }}
+    <div class="custom-repeat">
+      <div class="repeat-line">
+        <span>Every</span> {{ form.repeat_interval }} {{ form.repeat_freq }}
+      </div>
+      <div class="repeat-weekdays" role="group" aria-label="Repeat on">
+        {% for box in form.repeat_weekdays %}
+          <label class="weekday-pick" title="{{ box.choice_label }}">{{ box.tag }}<span>{{ box.choice_label|slice:":1" }}</span></label>
+        {% endfor %}
+      </div>
+      <div class="repeat-ends" role="group" aria-label="Ends">
+        <span>Ends</span>
+        {% for radio in form.repeat_ends %}
+          <label class="end-option">{{ radio.tag }} {{ radio.choice_label }}
+            {% if radio.data.value == 'on' %}{{ form.repeat_until }}{% endif %}
+            {% if radio.data.value == 'after' %}{{ form.repeat_count }} times{% endif %}
+          </label>
+        {% endfor %}
+        {{ form.repeat_until.errors }}{{ form.repeat_count.errors }}
+      </div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Notifications</label>
+    {{ reminders.management_form }}
+    {{ reminders.non_form_errors }}
+    <div class="reminder-rows">
+      {% for r in reminders %}
+        {% include "raphical/reminder_row.html" with r=r %}
+      {% endfor %}
+    </div>
+    <template class="reminder-template">
+      {% include "raphical/reminder_row.html" with r=reminders.empty_form %}
+    </template>
+    <button type="button" class="link-btn add-reminder">+ Add notification</button>
+    <p class="hint">For all-day events, reminders count back from 9:00 AM on the day.
+      <a href="{% url 'raphical:notifications' %}">Notification settings</a></p>
+  </div>
+
+  <div class="field">
+    <label>Color</label>
+    <div class="swatches" role="group" aria-label="Preset colors" style="--swatch-columns: {{ preset_columns }}">
+      {% for value, name in preset_colors %}
+        <button type="button" class="swatch" data-color="{{ value }}" title="{{ name }}"
+                aria-label="{{ name }}" aria-pressed="false" style="background: {{ value }}"></button>
+      {% endfor %}
+    </div>
+    <label class="custom-color">{{ form.color }} Custom color</label>
+    {{ form.color.errors }}
+  </div>
+
+  <div class="field">
+    {{ form.description.label_tag }}{{ form.description }}{{ form.description.errors }}
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn" href="{% url 'raphical:month' %}" data-close>Cancel</a>
+    {% if event.pk %}
+      <button class="btn btn-danger" type="submit" formnovalidate formaction="{{ delete_action }}"
+              {% if not in_series %}onclick="return confirm('Delete this event?')"{% endif %}>Delete</button>
+    {% endif %}
+  </div>
+
+  {% if in_series %}
+    {# Asked when saving or deleting a date of a repeating event. #}
+    <input type="hidden" name="scope" value="this">
+    <dialog class="scope-dialog" aria-labelledby="scope-title">
+      <h3 id="scope-title">Edit repeating event</h3>
+      <label class="scope-this"><input type="radio" name="scope-choice" value="this" checked> This event</label>
+      <label><input type="radio" name="scope-choice" value="following"> This and following events</label>
+      <label><input type="radio" name="scope-choice" value="all"> All events</label>
+      <div class="actions">
+        <button type="button" class="btn" data-scope-cancel>Cancel</button>
+        <button type="button" class="btn btn-primary" data-scope-ok>OK</button>
+      </div>
+    </dialog>
+  {% endif %}
+</form>

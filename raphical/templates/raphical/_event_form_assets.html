@@ -1,0 +1,198 @@
+{# CSS and setup script for the event form; used by the full page and the month page's pop-up. #}
+<style>
+  .event-form h2 { margin-top: 0; }
+  .event-form .row { display: flex; gap: .75rem; }
+  .event-form .row .field { flex: 1; }
+  .event-form .check { display: flex; align-items: center; gap: .5rem; margin-bottom: 1rem; }
+  .event-form .check input { width: auto; }
+  .event-form.all-day .time-field { display: none; }
+  .event-form .swatches {
+    display: grid; grid-template-columns: repeat(var(--swatch-columns, 12), minmax(0, 1.5rem));
+    gap: .4rem; margin-bottom: .6rem;
+  }
+  .event-form .swatch {
+    width: 100%; aspect-ratio: 1; border-radius: 50%; padding: 0; cursor: pointer;
+    border: 2px solid #fff; box-shadow: 0 0 0 1px var(--border);
+  }
+  .event-form .swatch[aria-pressed="true"] { box-shadow: 0 0 0 2px #3c4043; }
+  .event-form .swatch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .event-form .custom-color { display: flex; align-items: center; gap: .5rem; font-size: .9rem; color: var(--muted); }
+  .event-form .field .custom-color input { width: 2.5rem; height: 1.9rem; padding: 0 2px; cursor: pointer; }
+  .event-form .reminder-row { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-bottom: .4rem; }
+  .event-form .field .reminder-row select, .event-form .field .reminder-row input {
+    width: auto; padding: .35rem; border: 1px solid var(--border); border-radius: 4px; font: inherit;
+  }
+  .event-form .field .reminder-row input[type=number] { width: 4.5rem; }
+  .event-form .reminder-row .delete { display: none; }
+  .event-form .remove-reminder {
+    display: inline-flex; border: 0; background: none; cursor: pointer;
+    color: var(--muted); padding: .35rem; border-radius: 50%;
+  }
+  .event-form .remove-reminder:hover { background: #fce8e6; color: #d93025; }
+  .event-form .link-btn { border: 0; background: none; color: var(--accent); padding: .2rem 0; cursor: pointer; font: inherit; }
+  .event-form .hint { font-size: .8rem; color: var(--muted); margin: .3rem 0 0; }
+  .event-form .actions { display: flex; gap: .5rem; }
+  .event-form .field select {
+    width: 100%; padding: .5rem; border: 1px solid var(--border); border-radius: 4px; font: inherit; background: #fff;
+  }
+  .event-form .custom-repeat {
+    display: grid; gap: .6rem; margin-top: .5rem; padding: .75rem;
+    border: 1px solid var(--border); border-radius: 6px;
+  }
+  .event-form:not(.repeat-custom) .custom-repeat { display: none; }
+  .event-form:not(.repeat-weekly) .repeat-weekdays { display: none; }
+  .event-form .repeat-line, .event-form .end-option { display: flex; align-items: center; gap: .4rem; }
+  .event-form .custom-repeat .field-inline, .event-form .field .custom-repeat input,
+  .event-form .field .custom-repeat select { width: auto; padding: .35rem; }
+  .event-form .field .custom-repeat input[type=number] { width: 4rem; }
+  .event-form .field .custom-repeat input[type=radio] { width: auto; }
+  .event-form .repeat-weekdays { display: flex; gap: .35rem; }
+  .event-form .weekday-pick input { position: absolute; opacity: 0; pointer-events: none; }
+  .event-form .weekday-pick span {
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    width: 2rem; height: 2rem; border-radius: 50%; background: #f1f3f4; font-size: .8rem; font-weight: 600;
+  }
+  .event-form .weekday-pick input:checked + span { background: var(--accent); color: #fff; }
+  .event-form .weekday-pick input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .event-form .repeat-ends { display: grid; gap: .35rem; }
+  .scope-dialog {
+    border: 0; border-radius: 8px; padding: 1.25rem 1.5rem; min-width: min(20rem, calc(100vw - 2rem));
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .28);
+  }
+  .scope-dialog h3 { margin: 0 0 .75rem; font-size: 1.05rem; }
+  .scope-dialog label { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+  .scope-dialog .actions { justify-content: flex-end; margin-top: 1rem; }
+  .event-form .btn-danger { margin-left: auto; color: #d93025; }
+  .event-form .btn-danger:hover { background: #fce8e6; }
+</style>
+<script>
+  // Wire up an event form's all-day toggle, color swatches and reminder rows.
+  // Called again each time a form is loaded into the pop-up.
+  function initEventForm(form) {
+    const $ = selector => form.querySelector(selector);
+
+    const allDay = $('[name=all_day]');
+    const syncAllDay = () => form.classList.toggle('all-day', allDay.checked);
+    allDay.addEventListener('change', syncAllDay);
+    syncAllDay();
+
+    const colorInput = $('[name=color]');
+    const swatches = form.querySelectorAll('.swatch');
+    const markSelected = () => swatches.forEach(s =>
+      s.setAttribute('aria-pressed', s.dataset.color === colorInput.value.toLowerCase()));
+    swatches.forEach(s => s.addEventListener('click', () => {
+      colorInput.value = s.dataset.color;
+      markSelected();
+    }));
+    colorInput.addEventListener('input', markSelected);
+    markSelected();
+
+    // Reminder rows (a Django formset): add from the template, remove by
+    // ticking the row's hidden DELETE box.
+    const rows = $('.reminder-rows');
+    const total = $('[name=reminders-TOTAL_FORMS]');
+    const maxForms = Number($('[name=reminders-MAX_NUM_FORMS]').value);
+    const addBtn = $('.add-reminder');
+    const visibleRows = () => rows.querySelectorAll('.reminder-row:not([hidden])').length;
+    const syncAdd = () => { addBtn.hidden = visibleRows() >= maxForms; };
+
+    addBtn.addEventListener('click', () => {
+      const html = $('.reminder-template').innerHTML.replace(/__prefix__/g, total.value);
+      rows.insertAdjacentHTML('beforeend', html);
+      rows.lastElementChild.querySelector('input[type=number]').value = 10;
+      total.value = Number(total.value) + 1;
+      syncAdd();
+    });
+    rows.addEventListener('click', event => {
+      const btn = event.target.closest('.remove-reminder');
+      if (!btn) return;
+      const row = btn.closest('.reminder-row');
+      row.querySelector('.delete input').checked = true;
+      row.hidden = true;
+      syncAdd();
+    });
+    syncAdd();
+
+    initRepeat(form);
+    if (form.hasAttribute('data-series')) initScopeQuestion(form);
+  }
+
+  const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+                       'August', 'September', 'October', 'November', 'December'];
+  const ORDINALS = ['first', 'second', 'third', 'fourth', 'last'];
+
+  // The repeat menu: show the Custom panel when chosen, and keep preset wording
+  // ("Weekly on Tuesday") in step with the start date. The server builds the
+  // actual rule from the date, so this is only the labels.
+  function initRepeat(form) {
+    const repeat = form.querySelector('[name=repeat]');
+    const freq = form.querySelector('[name=repeat_freq]');
+    const sync = () => {
+      form.classList.toggle('repeat-custom', repeat.value === 'custom');
+      form.classList.toggle('repeat-weekly', freq.value === 'WEEKLY');
+    };
+    repeat.addEventListener('change', sync);
+    freq.addEventListener('change', sync);
+    sync();
+
+    const startDate = form.querySelector('[name=start_date]');
+    const relabel = () => {
+      const [y, m, d] = startDate.value.split('-').map(Number);
+      if (!y || !m || !d) return;
+      const date = new Date(y, m - 1, d);
+      const day = DAY_NAMES[date.getDay()];
+      const labels = {
+        weekly: `Weekly on ${day}`,
+        monthly_nth: `Monthly on the ${ORDINALS[Math.floor((d - 1) / 7)]} ${day}`,
+        monthly_day: `Monthly on day ${d}`,
+        yearly: `Annually on ${MONTH_NAMES[m - 1]} ${d}`,
+      };
+      for (const option of repeat.options) {
+        if (labels[option.value]) option.textContent = labels[option.value];
+      }
+    };
+    startDate.addEventListener('change', relabel);
+
+    // Typing an end date or count picks the matching "Ends" option.
+    const pickEnd = value => () => {
+      form.querySelector(`[name=repeat_ends][value=${value}]`).checked = true;
+    };
+    form.querySelector('[name=repeat_until]').addEventListener('input', pickEnd('on'));
+    form.querySelector('[name=repeat_count]').addEventListener('input', pickEnd('after'));
+  }
+
+  // Saving or deleting a date of a repeating event first asks which dates it
+  // applies to, then re-submits with the answer in the hidden "scope" field.
+  function initScopeQuestion(form) {
+    const dialog = form.querySelector('.scope-dialog');
+    const scope = form.querySelector('[name=scope]');
+    const repeatFields = [...form.querySelectorAll('[name^=repeat]')];
+    const snapshot = () => JSON.stringify(repeatFields.map(
+      f => (f.type === 'checkbox' || f.type === 'radio') ? f.checked : f.value));
+    const before = snapshot();
+    let submitter = null;
+    let answered = false;
+
+    form.addEventListener('submit', event => {
+      if (answered) { answered = false; return; }   // let the real submit through
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      submitter = event.submitter;
+      const deleting = submitter?.classList.contains('btn-danger');
+      // A change to how it repeats can't apply to just one date.
+      const repeatChanged = !deleting && snapshot() !== before;
+      dialog.querySelector('h3').textContent = deleting ? 'Delete repeating event' : 'Edit repeating event';
+      dialog.querySelector('.scope-this').hidden = repeatChanged;
+      dialog.querySelectorAll('[name=scope-choice]')[repeatChanged ? 1 : 0].checked = true;
+      dialog.showModal();
+    });
+    dialog.querySelector('[data-scope-ok]').addEventListener('click', () => {
+      scope.value = dialog.querySelector('[name=scope-choice]:checked').value;
+      dialog.close();
+      answered = true;
+      form.requestSubmit(submitter);
+    });
+    dialog.querySelector('[data-scope-cancel]').addEventListener('click', () => dialog.close());
+  }
+</script>

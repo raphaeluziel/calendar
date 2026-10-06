@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Raphi's Calendar{% endblock %}</title>
+  <style>
+    :root {
+      --border: #dadce0;
+      --muted: #70757a;
+      --accent: #1a73e8;
+    }
+    * { box-sizing: border-box; }
+    /* Keep the hidden attribute working on elements styled with display: flex etc. */
+    [hidden] { display: none !important; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      color: #3c4043;
+      background: #fff;
+    }
+    a { color: inherit; text-decoration: none; }
+    header {
+      display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem;
+      padding: .75rem 1.25rem;
+    }
+    header .brand { font-size: 1.35rem; font-weight: 500; }
+    header .spacer { flex: 1; }
+    .btn {
+      display: inline-block; padding: .45rem 1rem; border-radius: 4px;
+      border: 1px solid var(--border); background: #fff; cursor: pointer;
+      font: inherit; color: inherit;
+    }
+    .btn:hover { background: #f1f3f4; }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #1765cc; }
+    main { padding: 1rem 1.25rem; }
+    .card {
+      max-width: 480px; margin: 2rem auto; padding: 1.5rem 2rem;
+      border: 1px solid var(--border); border-radius: 8px;
+    }
+    .field { margin-bottom: 1rem; }
+    .field label { display: block; margin-bottom: .3rem; font-size: .9rem; color: var(--muted); }
+    .field input, .field textarea {
+      width: 100%; padding: .5rem; border: 1px solid var(--border);
+      border-radius: 4px; font: inherit;
+    }
+    .messages { list-style: none; margin: 0; padding: 0; }
+    .messages li { padding: .6rem 1.25rem; background: #e6f4ea; color: #137333; }
+    .messages li.error { background: #fce8e6; color: #d93025; }
+    .errorlist { color: #d93025; margin: .25rem 0; padding-left: 1rem; font-size: .9rem; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <header>
+    <a class="brand" href="{% url 'raphical:month' %}">Raphi's Calendar</a>
+    {% block header %}{% endblock %}
+    <span class="spacer"></span>
+    {% if user.is_authenticated %}
+      <a class="btn" href="{% url 'raphical:notifications' %}">Notifications</a>
+      <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button class="btn" type="submit">Log out</button>
+      </form>
+    {% endif %}
+  </header>
+  {% if messages %}
+    <ul class="messages">
+      {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+  <main>{% block content %}{% endblock %}</main>
+  {% if user.is_authenticated %}
+  <script>
+    // Keeps the push service worker current. (Registering it also replaces the
+    // old offline-caching worker, whose saved pages are deleted here.)
+    navigator.serviceWorker?.register('{% url "raphical:service_worker" %}').catch(() => {});
+    window.caches?.delete('raphical-offline-v1');
+  </script>
+  {% endif %}
+</body>
+</html>

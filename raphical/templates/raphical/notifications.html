@@ -1,0 +1,154 @@
+{% extends "raphical/base.html" %}
+
+{% block title %}Notifications · Raphical{% endblock %}
+
+{% block extra_head %}
+<style>
+  .card h3 { font-size: 1rem; margin: 1.5rem 0 .5rem; }
+  .status { margin: .25rem 0 .75rem; }
+  .status.on { color: #188038; font-weight: 600; }
+  .status.problem { color: #d93025; }
+  .muted { color: var(--muted); font-size: .9rem; }
+  .actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .devices { list-style: none; padding: 0; margin: 0; }
+  .devices li {
+    display: flex; align-items: center; gap: .75rem; padding: .5rem 0;
+    border-bottom: 1px solid var(--border); font-size: .85rem;
+  }
+  .devices .ua { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h2>Notifications</h2>
+
+  <h3>This device</h3>
+  <p class="status" id="push-status">Checking…</p>
+  <div class="actions">
+    <button class="btn btn-primary" type="button" id="push-enable" hidden>Turn on notifications</button>
+    <button class="btn" type="button" id="push-disable" hidden>Turn off on this device</button>
+  </div>
+  <p class="muted">Turn this on separately on each computer and phone where you want pop-up reminders.</p>
+
+  <h3>Devices with notifications on</h3>
+  {% if devices %}
+    <ul class="devices">
+      {% for device in devices %}
+        <li>
+          <span class="ua" title="{{ device.user_agent }}">{{ device.user_agent|default:"Unknown browser" }}</span>
+          <span class="muted">{{ device.created|date:"M j, Y" }}</span>
+          <form method="post" action="{% url 'raphical:device_remove' device.pk %}">
+            {% csrf_token %}
+            <button class="btn" type="submit">Remove</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">None yet.</p>
+  {% endif %}
+
+  <h3>Email reminders</h3>
+  {% if user.email %}
+    <p>Sent to <strong>{{ user.email }}</strong>.</p>
+  {% else %}
+    <p class="status problem">Your account has no email address, so email reminders can't be sent.</p>
+  {% endif %}
+
+  <h3>Test</h3>
+  <form method="post" action="{% url 'raphical:notification_test' %}" class="actions">
+    {% csrf_token %}
+    <button class="btn" type="submit" name="kind" value="push">Send test notification</button>
+    <button class="btn" type="submit" name="kind" value="email">Send test email</button>
+  </form>
+</div>
+
+<script>
+(() => {
+  const PUBLIC_KEY = '{{ vapid_public_key }}';
+  const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const statusEl = document.getElementById('push-status');
+  const enableBtn = document.getElementById('push-enable');
+  const disableBtn = document.getElementById('push-disable');
+
+  function show(text, kind, subscribed) {
+    statusEl.textContent = text;
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+    enableBtn.hidden = subscribed !== false;
+    disableBtn.hidden = subscribed !== true;
+  }
+
+  function keyBytes(base64url) {
+    const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64 + '='.repeat((4 - base64.length % 4) % 4));
+    return Uint8Array.from(raw, c => c.charCodeAt(0));
+  }
+
+  async function post(url, body) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(`Server said ${response.status}`);
+  }
+
+  async function registration() {
+    await navigator.serviceWorker.register('{% url "raphical:service_worker" %}');
+    return navigator.serviceWorker.ready;
+  }
+
+  async function refresh() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      return show("This browser doesn't support push notifications.", 'problem');
+    }
+    if (Notification.permission === 'denied') {
+      return show('Notifications are blocked for this site. Allow them in the browser\'s site settings, then reload.', 'problem');
+    }
+    const sub = await (await registration()).pushManager.getSubscription();
+    if (sub) {
+      await post('{% url "raphical:push_subscribe" %}', sub.toJSON());  // keep server in sync
+      show('Notifications are on for this device.', 'on', true);
+    } else {
+      show('Notifications are off for this device.', '', false);
+    }
+  }
+
+  enableBtn.addEventListener('click', async () => {
+    enableBtn.disabled = true;
+    try {
+      if (await Notification.requestPermission() !== 'granted') return refresh();
+      const reg = await registration();
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true, applicationServerKey: keyBytes(PUBLIC_KEY),
+      });
+      await post('{% url "raphical:push_subscribe" %}', sub.toJSON());
+      location.reload();  // refresh the device list
+    } catch (err) {
+      show(`Couldn't turn on notifications: ${err.message}`, 'problem', false);
+    } finally {
+      enableBtn.disabled = false;
+    }
+  });
+
+  disableBtn.addEventListener('click', async () => {
+    disableBtn.disabled = true;
+    try {
+      const sub = await (await registration()).pushManager.getSubscription();
+      if (sub) {
+        await post('{% url "raphical:push_unsubscribe" %}', { endpoint: sub.endpoint });
+        await sub.unsubscribe();
+      }
+      location.reload();
+    } catch (err) {
+      show(`Couldn't turn off notifications: ${err.message}`, 'problem', true);
+    } finally {
+      disableBtn.disabled = false;
+    }
+  });
+
+  refresh().catch(err => show(`Couldn't check notifications: ${err.message}`, 'problem'));
+})();
+</script>
+{% endblock %}
