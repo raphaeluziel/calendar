@@ -2,7 +2,7 @@ from django.urls import path
 
 from . import views
 
-app_name = 'raphical'
+app_name = 'planner'
 
 urlpatterns = [
     path('', views.month, name='month'),

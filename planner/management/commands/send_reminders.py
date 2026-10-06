@@ -1,7 +1,7 @@
 import time
 
-from raphical.management.base import CalendarCommand
-from raphical.notifications import send_due_reminders
+from planner.management.base import CalendarCommand
+from planner.notifications import send_due_reminders
 
 # How often to look for due reminders. Reminders are set in whole minutes,
 # so this keeps them at most half a minute late.

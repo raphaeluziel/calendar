@@ -35,7 +35,7 @@ class CalendarTests(TestCase):
         return self.client.post(url, data)
 
     def test_login_required(self):
-        for url in [reverse('raphical:month'), reverse('raphical:event_create')]:
+        for url in [reverse('planner:month'), reverse('planner:event_create')]:
             response = self.client.get(url)
             self.assertRedirects(response, f"{reverse('login')}?next={url}")
 
@@ -46,20 +46,20 @@ class CalendarTests(TestCase):
             owner=self.user, title='Dentist', start=start,
             end=start + datetime.timedelta(hours=1),
         )
-        response = self.client.get(reverse('raphical:month', args=[2026, 10]))
+        response = self.client.get(reverse('planner:month', args=[2026, 10]))
         self.assertContains(response, 'Dentist')
         self.assertContains(response, 'October 2026')
 
     def test_create_event(self):
         self.client.force_login(self.user)
-        response = self.post_event(reverse('raphical:event_create'), {
+        response = self.post_event(reverse('planner:event_create'), {
             'title': 'Lunch',
             'start_date': '2026-11-03', 'start_time': '12:00',
             'end_date': '2026-11-03', 'end_time': '13:00',
             'color': '#0b8043',
             'description': '',
         })
-        self.assertRedirects(response, reverse('raphical:month', args=[2026, 11]))
+        self.assertRedirects(response, reverse('planner:month', args=[2026, 11]))
         event = Event.objects.get()
         self.assertEqual(event.owner, self.user)
         self.assertEqual(event.color, '#0b8043')
@@ -69,20 +69,20 @@ class CalendarTests(TestCase):
 
     def test_create_all_day_event_without_times(self):
         self.client.force_login(self.user)
-        response = self.post_event(reverse('raphical:event_create'), {
+        response = self.post_event(reverse('planner:event_create'), {
             'title': 'Vacation', 'all_day': 'on',
             'start_date': '2026-11-03', 'end_date': '2026-11-05',
             'color': '#d50000',
         })
-        self.assertRedirects(response, reverse('raphical:month', args=[2026, 11]))
+        self.assertRedirects(response, reverse('planner:month', args=[2026, 11]))
         event = Event.objects.get()
         self.assertTrue(event.all_day)
-        month = self.client.get(reverse('raphical:month', args=[2026, 11]))
+        month = self.client.get(reverse('planner:month', args=[2026, 11]))
         self.assertContains(month, 'Vacation', count=6)  # 3 days x (title attr + text)
 
     def test_timed_event_requires_times(self):
         self.client.force_login(self.user)
-        response = self.post_event(reverse('raphical:event_create'), {
+        response = self.post_event(reverse('planner:event_create'), {
             'title': 'No time', 'start_date': '2026-11-03', 'end_date': '2026-11-03',
             'color': '#d50000',
         })
@@ -91,7 +91,7 @@ class CalendarTests(TestCase):
 
     def test_end_before_start_rejected(self):
         self.client.force_login(self.user)
-        response = self.post_event(reverse('raphical:event_create'), {
+        response = self.post_event(reverse('planner:event_create'), {
             'title': 'Bad',
             'start_date': '2026-11-03', 'start_time': '12:00',
             'end_date': '2026-11-03', 'end_time': '11:00',
@@ -102,7 +102,7 @@ class CalendarTests(TestCase):
 
     def test_custom_color(self):
         self.client.force_login(self.user)
-        self.post_event(reverse('raphical:event_create'), {
+        self.post_event(reverse('planner:event_create'), {
             'title': 'Custom', 'all_day': 'on',
             'start_date': '2026-11-03', 'end_date': '2026-11-03',
             'color': '#FFEE58',
@@ -113,7 +113,7 @@ class CalendarTests(TestCase):
 
     def test_invalid_color_rejected(self):
         self.client.force_login(self.user)
-        response = self.post_event(reverse('raphical:event_create'), {
+        response = self.post_event(reverse('planner:event_create'), {
             'title': 'Bad color', 'all_day': 'on',
             'start_date': '2026-11-03', 'end_date': '2026-11-03',
             'color': 'red',
@@ -131,13 +131,13 @@ class CalendarTests(TestCase):
     def test_month_links_events_to_edit(self):
         self.client.force_login(self.user)
         event = self._make_event()
-        response = self.client.get(reverse('raphical:month', args=[2026, 11]))
-        self.assertContains(response, reverse('raphical:event_edit', args=[event.pk]))
+        response = self.client.get(reverse('planner:month', args=[2026, 11]))
+        self.assertContains(response, reverse('planner:event_edit', args=[event.pk]))
 
     def test_edit_form_prefilled(self):
         self.client.force_login(self.user)
         event = self._make_event()
-        response = self.client.get(reverse('raphical:event_edit', args=[event.pk]))
+        response = self.client.get(reverse('planner:event_edit', args=[event.pk]))
         self.assertContains(response, 'Edit event')
         self.assertContains(response, 'value="Meeting"')
         self.assertContains(response, 'value="2026-11-03"')
@@ -147,12 +147,12 @@ class CalendarTests(TestCase):
     def test_edit_event(self):
         self.client.force_login(self.user)
         event = self._make_event()
-        response = self.post_event(reverse('raphical:event_edit', args=[event.pk]), {
+        response = self.post_event(reverse('planner:event_edit', args=[event.pk]), {
             'title': 'Moved', 'all_day': 'on',
             'start_date': '2026-12-01', 'end_date': '2026-12-02',
             'color': '#e91e63',
         })
-        self.assertRedirects(response, reverse('raphical:month', args=[2026, 12]))
+        self.assertRedirects(response, reverse('planner:month', args=[2026, 12]))
         event.refresh_from_db()
         self.assertEqual(Event.objects.count(), 1)
         self.assertEqual((event.title, event.all_day, event.color), ('Moved', True, '#e91e63'))
@@ -161,24 +161,24 @@ class CalendarTests(TestCase):
         event = self._make_event()
         other = get_user_model().objects.create_user('other', password='pw')
         self.client.force_login(other)
-        response = self.client.get(reverse('raphical:event_edit', args=[event.pk]))
+        response = self.client.get(reverse('planner:event_edit', args=[event.pk]))
         self.assertEqual(response.status_code, 404)
 
     def test_delete_event(self):
         self.client.force_login(self.user)
         event = self._make_event()
         self.assertContains(
-            self.client.get(reverse('raphical:event_edit', args=[event.pk])),
-            reverse('raphical:event_delete', args=[event.pk]),
+            self.client.get(reverse('planner:event_edit', args=[event.pk])),
+            reverse('planner:event_delete', args=[event.pk]),
         )
-        response = self.client.post(reverse('raphical:event_delete', args=[event.pk]))
-        self.assertRedirects(response, reverse('raphical:month', args=[2026, 11]))
+        response = self.client.post(reverse('planner:event_delete', args=[event.pk]))
+        self.assertRedirects(response, reverse('planner:month', args=[2026, 11]))
         self.assertFalse(Event.objects.exists())
 
     def test_delete_requires_post(self):
         self.client.force_login(self.user)
         event = self._make_event()
-        response = self.client.get(reverse('raphical:event_delete', args=[event.pk]))
+        response = self.client.get(reverse('planner:event_delete', args=[event.pk]))
         self.assertEqual(response.status_code, 405)
         self.assertTrue(Event.objects.exists())
 
@@ -186,14 +186,14 @@ class CalendarTests(TestCase):
         event = self._make_event()
         other = get_user_model().objects.create_user('other', password='pw')
         self.client.force_login(other)
-        response = self.client.post(reverse('raphical:event_delete', args=[event.pk]))
+        response = self.client.post(reverse('planner:event_delete', args=[event.pk]))
         self.assertEqual(response.status_code, 404)
         self.assertTrue(Event.objects.exists())
 
 
     def test_events_added_by_clicking_a_day_only(self):
         self.client.force_login(self.user)
-        response = self.client.get(reverse('raphical:month', args=[2026, 10]))
+        response = self.client.get(reverse('planner:month', args=[2026, 10]))
         self.assertNotContains(response, '+ Create')
         self.assertContains(response, 'href="/events/new/?date=2026-10-06"')
 
@@ -251,7 +251,7 @@ class ReminderTests(TestCase):
     def test_rescheduling_event_rearms_sent_reminder(self):
         event = self.make_event()
         Reminder.objects.update(sent_at=self.now)
-        self.post_event(reverse('raphical:event_edit', args=[event.pk]), {
+        self.post_event(reverse('planner:event_edit', args=[event.pk]), {
             'title': 'Dentist', 'start_date': '2026-11-04', 'start_time': '10:00',
             'end_date': '2026-11-04', 'end_time': '11:00', 'color': '#1976d2',
             'reminders-0-id': str(event.reminders.get().pk),
@@ -265,12 +265,12 @@ class ReminderTests(TestCase):
     # --- event form
 
     def test_new_event_form_has_no_reminders(self):
-        response = self.client.get(reverse('raphical:event_create') + '?date=2026-11-03')
+        response = self.client.get(reverse('planner:event_create') + '?date=2026-11-03')
         self.assertContains(response, 'name="reminders-TOTAL_FORMS" value="0"')
         self.assertContains(response, '+ Add notification')
 
     def test_create_event_with_reminders(self):
-        response = self.post_event(reverse('raphical:event_create'), {
+        response = self.post_event(reverse('planner:event_create'), {
             'title': 'Flight', 'start_date': '2026-11-10', 'start_time': '18:00',
             'end_date': '2026-11-10', 'end_time': '21:00', 'color': '#1976d2',
         }, reminders=[('push', 30, 1), ('email', 1, 1440)])
@@ -281,14 +281,14 @@ class ReminderTests(TestCase):
 
     def test_edit_form_shows_reminder_in_largest_unit(self):
         event = self.make_event(minutes=(120,))
-        response = self.client.get(reverse('raphical:event_edit', args=[event.pk]))
+        response = self.client.get(reverse('planner:event_edit', args=[event.pk]))
         self.assertContains(response, 'name="reminders-0-amount" value="2"')
         self.assertContains(response, '<option value="60" selected>hours</option>', html=True)
 
     def test_remove_reminder(self):
         event = self.make_event()
         reminder = event.reminders.get()
-        self.post_event(reverse('raphical:event_edit', args=[event.pk]), {
+        self.post_event(reverse('planner:event_edit', args=[event.pk]), {
             'title': 'Dentist', 'start_date': '2026-11-03', 'start_time': '14:30',
             'end_date': '2026-11-03', 'end_time': '15:30', 'color': '#1976d2',
             'reminders-0-id': str(reminder.pk), 'reminders-0-event': str(event.pk),
@@ -298,7 +298,7 @@ class ReminderTests(TestCase):
         self.assertFalse(Reminder.objects.exists())
 
     def test_reminder_more_than_4_weeks_rejected(self):
-        response = self.post_event(reverse('raphical:event_create'), {
+        response = self.post_event(reverse('planner:event_create'), {
             'title': 'X', 'start_date': '2026-12-30', 'start_time': '10:00',
             'end_date': '2026-12-30', 'end_time': '11:00', 'color': '#1976d2',
         }, reminders=[('push', 5, 10080)])
@@ -310,7 +310,7 @@ class ReminderTests(TestCase):
     def advance_to(self, *args):
         timezone.now.return_value = aware(*args)
 
-    @mock.patch('raphical.notifications.webpush')
+    @mock.patch('planner.notifications.webpush')
     def test_due_push_reminder_sent_once(self, webpush):
         PushSubscription.objects.create(
             user=self.user, endpoint='https://push.example/abc', p256dh='k', auth='a')
@@ -323,7 +323,7 @@ class ReminderTests(TestCase):
         payload = json.loads(webpush.call_args.kwargs['data'])
         self.assertEqual(payload['title'], 'Dentist')
         self.assertEqual(payload['body'], 'Tue, Nov 3 · 2:30 PM – 3:30 PM')
-        self.assertEqual(payload['url'], reverse('raphical:event_edit', args=[event.pk]))
+        self.assertEqual(payload['url'], reverse('planner:event_edit', args=[event.pk]))
 
     def test_due_email_reminder_sent(self):
         self.make_event(method=Reminder.EMAIL)
@@ -340,7 +340,7 @@ class ReminderTests(TestCase):
         self.assertEqual(len(mail.outbox), 0)
         self.assertIsNotNone(Reminder.objects.get().sent_at)
 
-    @mock.patch('raphical.notifications.webpush')
+    @mock.patch('planner.notifications.webpush')
     def test_expired_subscription_removed(self, webpush):
         PushSubscription.objects.create(
             user=self.user, endpoint='https://push.example/gone', p256dh='k', auth='a')
@@ -352,7 +352,7 @@ class ReminderTests(TestCase):
     # --- settings page and endpoints
 
     def test_notifications_page(self):
-        response = self.client.get(reverse('raphical:notifications'))
+        response = self.client.get(reverse('planner:notifications'))
         key = notifications.vapid_public_key()
         self.assertEqual(len(key), 87)  # 65-byte P-256 point, base64url
         self.assertContains(response, key)
@@ -360,23 +360,23 @@ class ReminderTests(TestCase):
 
     def test_subscribe_and_unsubscribe(self):
         sub = {'endpoint': 'https://push.example/xyz', 'keys': {'p256dh': 'k', 'auth': 'a'}}
-        url = reverse('raphical:push_subscribe')
+        url = reverse('planner:push_subscribe')
         self.client.post(url, json.dumps(sub), content_type='application/json')
         self.client.post(url, json.dumps(sub), content_type='application/json')
         self.assertEqual(PushSubscription.objects.get().user, self.user)
-        self.client.post(reverse('raphical:push_unsubscribe'),
+        self.client.post(reverse('planner:push_unsubscribe'),
                          json.dumps({'endpoint': sub['endpoint']}), content_type='application/json')
         self.assertFalse(PushSubscription.objects.exists())
 
     def test_subscribe_rejects_bad_data(self):
-        url = reverse('raphical:push_subscribe')
+        url = reverse('planner:push_subscribe')
         for body in ['nope', json.dumps({'endpoint': 'http://insecure', 'keys': {'p256dh': 'k', 'auth': 'a'}})]:
             response = self.client.post(url, body, content_type='application/json')
             self.assertEqual(response.status_code, 400)
         self.assertFalse(PushSubscription.objects.exists())
 
     def test_test_email(self):
-        response = self.client.post(reverse('raphical:notification_test'), {'kind': 'email'}, follow=True)
+        response = self.client.post(reverse('planner:notification_test'), {'kind': 'email'}, follow=True)
         self.assertContains(response, 'Test email sent')
         self.assertEqual(len(mail.outbox), 1)
 
@@ -407,38 +407,38 @@ class PopupFormTests(TestCase):
         }
 
     def test_month_page_has_dialog_and_form_script(self):
-        response = self.client.get(reverse('raphical:month', args=[2026, 11]))
+        response = self.client.get(reverse('planner:month', args=[2026, 11]))
         self.assertContains(response, '<dialog id="event-dialog"')
         self.assertContains(response, 'function initEventForm(form)')
 
     def test_modal_get_returns_just_the_form(self):
-        response = self.client.get(reverse('raphical:event_create') + '?date=2026-11-03', **self.MODAL)
+        response = self.client.get(reverse('planner:event_create') + '?date=2026-11-03', **self.MODAL)
         self.assertContains(response, '<form method="post" class="event-form"')
         self.assertContains(response, 'action="/events/new/"')
         self.assertNotContains(response, '<html')
         self.assertIn('X-Modal', response['Vary'])
 
     def test_full_page_still_works(self):
-        response = self.client.get(reverse('raphical:event_edit', args=[self.event.pk]))
+        response = self.client.get(reverse('planner:event_edit', args=[self.event.pk]))
         self.assertContains(response, '<html')
         self.assertContains(response, f'action="/events/{self.event.pk}/edit/"')
         self.assertContains(response, "initEventForm(document.querySelector('.event-form'))")
 
     def test_modal_save_returns_redirect_json(self):
-        response = self.client.post(reverse('raphical:event_create'), self.event_data(), **self.MODAL)
-        self.assertEqual(response.json(), {'redirect': reverse('raphical:month', args=[2026, 12])})
+        response = self.client.post(reverse('planner:event_create'), self.event_data(), **self.MODAL)
+        self.assertEqual(response.json(), {'redirect': reverse('planner:month', args=[2026, 12])})
         self.assertTrue(Event.objects.filter(title='Lunch').exists())
 
     def test_modal_save_with_errors_returns_form(self):
         response = self.client.post(
-            reverse('raphical:event_create'), self.event_data(end_time='11:00'), **self.MODAL)
+            reverse('planner:event_create'), self.event_data(end_time='11:00'), **self.MODAL)
         self.assertContains(response, 'End must be after start.')
         self.assertNotContains(response, '<html')
 
     def test_modal_delete_returns_redirect_json(self):
         response = self.client.post(
-            reverse('raphical:event_delete', args=[self.event.pk]), **self.MODAL)
-        self.assertEqual(response.json(), {'redirect': reverse('raphical:month', args=[2026, 11])})
+            reverse('planner:event_delete', args=[self.event.pk]), **self.MODAL)
+        self.assertEqual(response.json(), {'redirect': reverse('planner:month', args=[2026, 11])})
         self.assertFalse(Event.objects.exists())
 
 
@@ -468,7 +468,7 @@ class HolidayTests(TestCase):
     def test_month_view_shows_holidays(self):
         user = get_user_model().objects.create_user('raph', password='pw')
         self.client.force_login(user)
-        response = self.client.get(reverse('raphical:month', args=[2026, 11]))
+        response = self.client.get(reverse('planner:month', args=[2026, 11]))
         self.assertContains(response, '<span class="holiday holiday-us"')
         self.assertContains(response, 'title="Thanksgiving Day"')
         self.assertContains(response, 'Veterans Day')
@@ -506,7 +506,7 @@ class HebrewCalendarTests(TestCase):
     def test_month_view_shows_jewish_holidays(self):
         user = get_user_model().objects.create_user('raph', password='pw')
         self.client.force_login(user)
-        response = self.client.get(reverse('raphical:month', args=[2026, 9]))
+        response = self.client.get(reverse('planner:month', args=[2026, 9]))
         self.assertContains(response, '<span class="holiday holiday-jewish"')
         self.assertContains(response, 'title="Yom Kippur (begins at sundown the evening before)"')
 
@@ -582,7 +582,7 @@ class RepeatingEventTests(TestCase):
 
     def dates(self, year=2026, month=11, title=None):
         """Local start times of events shown in a month (optionally with a given title)."""
-        response = self.client.get(reverse('raphical:month', args=[year, month]))
+        response = self.client.get(reverse('planner:month', args=[year, month]))
         items = [i for day in response.context['weeks'] for _, _, events in day for i in events]
         return sorted({timezone.localtime(i.start).replace(tzinfo=None) for i in items
                        if title is None or i.title == title})
@@ -590,7 +590,7 @@ class RepeatingEventTests(TestCase):
     def occurrence_url(self, name, *start, event=None):
         from .models import occurrence_key
         event = event or self.series
-        return reverse(f'raphical:{name}', args=[event.pk]) + f'?occurrence={occurrence_key(self.local(*start))}'
+        return reverse(f'planner:{name}', args=[event.pk]) + f'?occurrence={occurrence_key(self.local(*start))}'
 
     def form_data(self, **overrides):
         data = {
@@ -606,11 +606,11 @@ class RepeatingEventTests(TestCase):
     def test_shows_every_week_at_same_local_time_across_dst(self):
         expected = [datetime.datetime(2026, 11, d, 9, 0) for d in (3, 10, 17, 24)]
         self.assertEqual([d for d in self.dates() if d.month == 11], expected)
-        response = self.client.get(reverse('raphical:month', args=[2026, 11]))
+        response = self.client.get(reverse('planner:month', args=[2026, 11]))
         self.assertContains(response, 'aria-label="Repeats"')
 
     def test_create_repeating_event_from_form(self):
-        response = self.client.post(reverse('raphical:event_create'), self.form_data(
+        response = self.client.post(reverse('planner:event_create'), self.form_data(
             title='Yoga', start_date='2026-11-02', end_date='2026-11-02',
             repeat='custom', repeat_interval='2', repeat_weekdays=['MO', 'WE'],
             repeat_ends='after', repeat_count='4'), **self.MODAL)
@@ -689,7 +689,7 @@ class RepeatingEventTests(TestCase):
         self.client.post(self.occurrence_url('event_edit', 2026, 11, 10, 9, 0),
                          self.form_data(title='Moved', scope='this'), **self.MODAL)
         moved = Event.objects.get(title='Moved')
-        self.client.post(reverse('raphical:event_delete', args=[moved.pk]), {'scope': 'all'})
+        self.client.post(reverse('planner:event_delete', args=[moved.pk]), {'scope': 'all'})
         self.assertFalse(Event.objects.exists())
 
 
@@ -831,7 +831,7 @@ class IcsImportTests(TestCase):
 
     def shown(self, year=2026, month=11):
         self.client.force_login(self.user)
-        response = self.client.get(reverse('raphical:month', args=[year, month]))
+        response = self.client.get(reverse('planner:month', args=[year, month]))
         return sorted((timezone.localtime(i.start).strftime('%m-%d %H:%M'), i.title)
                       for week in response.context['weeks'] for _, _, events in week for i in events)
 
@@ -982,10 +982,10 @@ class IcsExportTests(TestCase):
             'EXDATE;TZID=America/New_York:20261110T090000',
             'RECURRENCE-ID;TZID=America/New_York:20261117T090000',
             'TRIGGER:-PT15M', 'ACTION:EMAIL', 'ATTENDEE:mailto:r@example.com',
-            'X-RAPHICAL-COLOR:#d32f2f',
+            'X-PLANNER-COLOR:#d32f2f',
         ]:
             self.assertIn(expected, text)
-        self.assertEqual(text.count(f'UID:raphical-event-{self.standup.pk}'), 2)  # series + changed date
+        self.assertEqual(text.count(f'UID:planner-event-{self.standup.pk}'), 2)  # series + changed date
 
     def test_round_trip_into_empty_calendar(self):
         self.export()
@@ -1015,3 +1015,11 @@ class IcsExportTests(TestCase):
         self.assertEqual(self.path.read_text(), 'keep me')
         self.export('--force')
         self.assertIn('BEGIN:VCALENDAR', self.path.read_text())
+
+
+class OldExportColorTests(TestCase):
+    def test_color_from_file_exported_before_rename(self):
+        from .ics_import import read_ics
+        ics = ICS_SECOND.replace('SUMMARY:Gym', 'SUMMARY:Gym\nX-RAPHICAL-COLOR:#388E3C')
+        gym = next(i for i in read_ics(ics.replace('\n', '\r\n').encode()) if i.title == 'Gym')
+        self.assertEqual(gym.color, '#388e3c')

@@ -1,4 +1,4 @@
-{% extends "raphical/base.html" %}
+{% extends "planner/base.html" %}
 
 {% block title %}Notifications · Raphical{% endblock %}
 
@@ -38,7 +38,7 @@
         <li>
           <span class="ua" title="{{ device.user_agent }}">{{ device.user_agent|default:"Unknown browser" }}</span>
           <span class="muted">{{ device.created|date:"M j, Y" }}</span>
-          <form method="post" action="{% url 'raphical:device_remove' device.pk %}">
+          <form method="post" action="{% url 'planner:device_remove' device.pk %}">
             {% csrf_token %}
             <button class="btn" type="submit">Remove</button>
           </form>
@@ -57,7 +57,7 @@
   {% endif %}
 
   <h3>Test</h3>
-  <form method="post" action="{% url 'raphical:notification_test' %}" class="actions">
+  <form method="post" action="{% url 'planner:notification_test' %}" class="actions">
     {% csrf_token %}
     <button class="btn" type="submit" name="kind" value="push">Send test notification</button>
     <button class="btn" type="submit" name="kind" value="email">Send test email</button>
@@ -95,7 +95,7 @@
   }
 
   async function registration() {
-    await navigator.serviceWorker.register('{% url "raphical:service_worker" %}');
+    await navigator.serviceWorker.register('{% url "planner:service_worker" %}');
     return navigator.serviceWorker.ready;
   }
 
@@ -108,7 +108,7 @@
     }
     const sub = await (await registration()).pushManager.getSubscription();
     if (sub) {
-      await post('{% url "raphical:push_subscribe" %}', sub.toJSON());  // keep server in sync
+      await post('{% url "planner:push_subscribe" %}', sub.toJSON());  // keep server in sync
       show('Notifications are on for this device.', 'on', true);
     } else {
       show('Notifications are off for this device.', '', false);
@@ -123,7 +123,7 @@
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true, applicationServerKey: keyBytes(PUBLIC_KEY),
       });
-      await post('{% url "raphical:push_subscribe" %}', sub.toJSON());
+      await post('{% url "planner:push_subscribe" %}', sub.toJSON());
       location.reload();  // refresh the device list
     } catch (err) {
       show(`Couldn't turn on notifications: ${err.message}`, 'problem', false);
@@ -137,7 +137,7 @@
     try {
       const sub = await (await registration()).pushManager.getSubscription();
       if (sub) {
-        await post('{% url "raphical:push_unsubscribe" %}', { endpoint: sub.endpoint });
+        await post('{% url "planner:push_unsubscribe" %}', { endpoint: sub.endpoint });
         await sub.unsubscribe();
       }
       location.reload();

@@ -1,12 +1,12 @@
-{% extends "raphical/base.html" %}
+{% extends "planner/base.html" %}
 
 {% block title %}{% if event.pk %}Edit event{% else %}New event{% endif %} · Raphical{% endblock %}
 
-{% block extra_head %}{% include "raphical/_event_form_assets.html" %}{% endblock %}
+{% block extra_head %}{% include "planner/_event_form_assets.html" %}{% endblock %}
 
 {% block content %}
 <div class="card">
-  {% include "raphical/_event_form.html" %}
+  {% include "planner/_event_form.html" %}
 </div>
 <script>initEventForm(document.querySelector('.event-form'));</script>
 {% endblock %}

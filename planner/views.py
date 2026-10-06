@@ -25,7 +25,7 @@ def month(request, year=None, month=None):
     year = year or today.year
     month = month or today.month
     if not 1 <= month <= 12:
-        return redirect('raphical:month')
+        return redirect('planner:month')
 
     weeks = calendar.Calendar(firstweekday=6).monthdatescalendar(year, month)
     first_day, last_day = weeks[0][0], weeks[-1][-1]
@@ -55,7 +55,7 @@ def month(request, year=None, month=None):
     prev_month = datetime.date(year, month, 1) - datetime.timedelta(days=1)
     next_month = datetime.date(year, month, 28) + datetime.timedelta(days=4)
 
-    return render(request, 'raphical/month.html', {
+    return render(request, 'planner/month.html', {
         'month_start': datetime.date(year, month, 1),
         'weeks': [
             [(day, holidays.get(day, []), by_day.get(day, [])) for day in week]
@@ -125,7 +125,7 @@ def _is_modal(request):
 
 def _done(request, start):
     """After a save or delete, go to the month the event is in."""
-    url = reverse('raphical:month', args=[start.year, start.month])
+    url = reverse('planner:month', args=[start.year, start.month])
     if _is_modal(request):
         return JsonResponse({'redirect': url})
     return redirect(url)
@@ -171,14 +171,14 @@ def _event_form(request, event, initial=None, occurrence=None):
 
     query = f'?occurrence={occurrence.key}' if occurrence else ''
     template = '_event_form.html' if _is_modal(request) else 'event_form.html'
-    return render(request, f'raphical/{template}', {
+    return render(request, f'planner/{template}', {
         'form': form,
         'reminders': reminders,
         'event': event,
         'in_series': in_series,
-        'form_action': (reverse('raphical:event_edit', args=[event.pk]) if event.pk
-                        else reverse('raphical:event_create')) + query,
-        'delete_action': reverse('raphical:event_delete', args=[event.pk]) + query if event.pk else '',
+        'form_action': (reverse('planner:event_edit', args=[event.pk]) if event.pk
+                        else reverse('planner:event_create')) + query,
+        'delete_action': reverse('planner:event_delete', args=[event.pk]) + query if event.pk else '',
         'preset_colors': Event.PRESET_COLORS,
         'preset_columns': Event.PRESET_COLUMNS,
     })
@@ -186,7 +186,7 @@ def _event_form(request, event, initial=None, occurrence=None):
 
 @login_required
 def notification_settings(request):
-    return render(request, 'raphical/notifications.html', {
+    return render(request, 'planner/notifications.html', {
         'vapid_public_key': notify.vapid_public_key(),
         'devices': request.user.push_subscriptions.order_by('-created'),
     })
@@ -229,7 +229,7 @@ def push_unsubscribe(request):
 def device_remove(request, pk):
     get_object_or_404(PushSubscription, pk=pk, user=request.user).delete()
     messages.success(request, 'Device removed. It will no longer get notifications.')
-    return redirect('raphical:notifications')
+    return redirect('planner:notifications')
 
 
 @login_required
@@ -248,10 +248,10 @@ def notification_test(request):
             messages.success(request, f'Test notification sent to {count} device(s).')
         else:
             messages.error(request, 'No devices have notifications turned on.')
-    return redirect('raphical:notifications')
+    return redirect('planner:notifications')
 
 
 @never_cache
 def service_worker(request):
     # Served from the site root so the worker's scope covers every page.
-    return render(request, 'raphical/sw.js', content_type='application/javascript')
+    return render(request, 'planner/sw.js', content_type='application/javascript')

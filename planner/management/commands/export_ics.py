@@ -3,8 +3,8 @@ from pathlib import Path
 
 from django.core.management.base import CommandError
 
-from raphical.ics_export import export_calendar
-from raphical.management.base import CalendarCommand
+from planner.ics_export import export_calendar
+from planner.management.base import CalendarCommand
 
 
 class Command(CalendarCommand):

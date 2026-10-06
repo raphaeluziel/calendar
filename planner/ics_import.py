@@ -142,7 +142,9 @@ def _item(component):
 
 def _color(component):
     """The color saved by export_ics, if present and valid."""
-    value = str(component.get('X-RAPHICAL-COLOR', '')).strip().lower()
+    # X-RAPHICAL-COLOR is the same thing in files exported before the app was renamed.
+    value = str(component.get('X-PLANNER-COLOR') or component.get('X-RAPHICAL-COLOR') or '')
+    value = value.strip().lower()
     return value if re.fullmatch(r'#[0-9a-f]{6}', value) else Event.DEFAULT_COLOR
 
 

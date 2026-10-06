@@ -54,11 +54,11 @@
 </head>
 <body>
   <header>
-    <a class="brand" href="{% url 'raphical:month' %}">Raphi's Calendar</a>
+    <a class="brand" href="{% url 'planner:month' %}">Raphi's Calendar</a>
     {% block header %}{% endblock %}
     <span class="spacer"></span>
     {% if user.is_authenticated %}
-      <a class="btn" href="{% url 'raphical:notifications' %}">Notifications</a>
+      <a class="btn" href="{% url 'planner:notifications' %}">Notifications</a>
       <form method="post" action="{% url 'logout' %}">
         {% csrf_token %}
         <button class="btn" type="submit">Log out</button>
@@ -73,10 +73,8 @@
   <main>{% block content %}{% endblock %}</main>
   {% if user.is_authenticated %}
   <script>
-    // Keeps the push service worker current. (Registering it also replaces the
-    // old offline-caching worker, whose saved pages are deleted here.)
-    navigator.serviceWorker?.register('{% url "raphical:service_worker" %}').catch(() => {});
-    window.caches?.delete('raphical-offline-v1');
+    // Keeps the push service worker (reminder notifications) current.
+    navigator.serviceWorker?.register('{% url "planner:service_worker" %}').catch(() => {});
   </script>
   {% endif %}
 </body>

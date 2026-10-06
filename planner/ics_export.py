@@ -14,13 +14,13 @@ from django.utils import timezone
 
 from .models import Event, Reminder
 
-PRODID = "-//Raphi's Calendar//raphical//EN"
+PRODID = "-//Raphi's Calendar//planner//EN"
 # Not a standard property; lets an export -> import round trip keep colors.
-COLOR_PROPERTY = 'X-RAPHICAL-COLOR'
+COLOR_PROPERTY = 'X-PLANNER-COLOR'
 
 
 def _uid(event):
-    return f'raphical-event-{event.pk}'
+    return f'planner-event-{event.pk}'
 
 
 def _local(moment):

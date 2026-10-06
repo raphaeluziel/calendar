@@ -2,10 +2,10 @@ from pathlib import Path
 
 from django.core.management.base import CommandError
 
-from raphical import recurrence
-from raphical.ics_import import apply_plan, plan_import, read_ics
-from raphical.management.base import CalendarCommand
-from raphical.notifications import describe_when
+from planner import recurrence
+from planner.ics_import import apply_plan, plan_import, read_ics
+from planner.management.base import CalendarCommand
+from planner.notifications import describe_when
 
 CHOICES = {'1': 'existing', '2': 'imported', 'b': 'both', 'm': 'merge'}
 

@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'raphical',
+    'planner',
 ]
 
 MIDDLEWARE = [
@@ -121,7 +121,7 @@ STATIC_URL = 'static/'
 # Authentication
 
 LOGIN_URL = 'login'
-LOGIN_REDIRECT_URL = 'raphical:month'
+LOGIN_REDIRECT_URL = 'planner:month'
 LOGOUT_REDIRECT_URL = 'login'
 
 

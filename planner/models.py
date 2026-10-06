@@ -92,7 +92,7 @@ class Event(models.Model):
 
     @property
     def edit_url(self):
-        return reverse('raphical:event_edit', args=[self.pk])
+        return reverse('planner:event_edit', args=[self.pk])
 
     def rule(self):
         # Expanding from the local start keeps the wall-clock time (9:00 AM

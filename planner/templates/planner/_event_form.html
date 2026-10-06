@@ -49,15 +49,15 @@
     {{ reminders.non_form_errors }}
     <div class="reminder-rows">
       {% for r in reminders %}
-        {% include "raphical/reminder_row.html" with r=r %}
+        {% include "planner/reminder_row.html" with r=r %}
       {% endfor %}
     </div>
     <template class="reminder-template">
-      {% include "raphical/reminder_row.html" with r=reminders.empty_form %}
+      {% include "planner/reminder_row.html" with r=reminders.empty_form %}
     </template>
     <button type="button" class="link-btn add-reminder">+ Add notification</button>
     <p class="hint">For all-day events, reminders count back from 9:00 AM on the day.
-      <a href="{% url 'raphical:notifications' %}">Notification settings</a></p>
+      <a href="{% url 'planner:notifications' %}">Notification settings</a></p>
   </div>
 
   <div class="field">
@@ -78,7 +78,7 @@
 
   <div class="actions">
     <button class="btn btn-primary" type="submit">Save</button>
-    <a class="btn" href="{% url 'raphical:month' %}" data-close>Cancel</a>
+    <a class="btn" href="{% url 'planner:month' %}" data-close>Cancel</a>
     {% if event.pk %}
       <button class="btn btn-danger" type="submit" formnovalidate formaction="{{ delete_action }}"
               {% if not in_series %}onclick="return confirm('Delete this event?')"{% endif %}>Delete</button>
