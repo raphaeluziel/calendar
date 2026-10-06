@@ -136,7 +136,14 @@ def _item(component):
         start=start, end=max(end, start), all_day=all_day,
         description=str(component.get('DESCRIPTION', '')).strip(),
         reminders=_reminders(component),
+        color=_color(component),
     )
+
+
+def _color(component):
+    """The color saved by export_ics, if present and valid."""
+    value = str(component.get('X-RAPHICAL-COLOR', '')).strip().lower()
+    return value if re.fullmatch(r'#[0-9a-f]{6}', value) else Event.DEFAULT_COLOR
 
 
 def _cancelled(component):

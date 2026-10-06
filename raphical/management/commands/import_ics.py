@@ -1,33 +1,61 @@
 from pathlib import Path
 
-from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import CommandError
+
 from raphical import recurrence
 from raphical.ics_import import apply_plan, plan_import, read_ics
+from raphical.management.base import CalendarCommand
 from raphical.notifications import describe_when
 
 CHOICES = {'1': 'existing', '2': 'imported', 'b': 'both', 'm': 'merge'}
 
 
-class Command(BaseCommand):
+class Command(CalendarCommand):
     help = (
-        'Import events from .ics files. When an event looks like one already on the '
-        'calendar (similar title, same day) you are asked which to keep, or to merge them. '
-        'Exact duplicates are skipped. Repeating events are imported as repeating events. '
-        'Nothing is saved until all questions are answered.'
+        'Import events from one or more .ics files (for example, exported from Google\n'
+        'Calendar, Outlook or Apple Calendar), asking about likely duplicates.'
     )
+    usage_text = """
+duplicates:
+  An imported event on the same day as an existing one, with a similar title
+  (ignoring case and punctuation, or one title containing the other), is a
+  likely duplicate. Both are shown and you choose:
+    1  keep the existing event (the imported one is skipped)
+    2  keep the imported event (it replaces the existing one)
+    b  keep both
+    m  merge: for each difference (title, time, repeat, description) choose
+       which to keep; for the description you can also keep both. Reminders
+       are combined.
+  Events identical to one already on the calendar are skipped without asking,
+  so importing the same file twice adds nothing.
+
+what is imported:
+  Title, times, all-day dates, description, "N minutes before" alarms (as
+  reminders), and colors from files made by export_ics. Repeating events stay
+  repeating, with their skipped and individually changed dates. Times with no
+  time zone are taken as New York time.
+
+Nothing is saved until every question is answered; Ctrl+C partway through
+leaves the calendar unchanged.
+
+examples:
+  python manage.py import_ics google.ics
+  python manage.py import_ics work.ics home.ics            several files at once
+  python manage.py import_ics google.ics --dry-run         show what would happen, save nothing
+  python manage.py import_ics google.ics --on-duplicate both   don't ask; keep both
+"""
 
     def add_arguments(self, parser):
-        parser.add_argument('files', nargs='+', type=Path, help='.ics file(s) to import')
+        parser.add_argument('files', nargs='+', type=Path, help='.ics file(s) to import.')
         parser.add_argument('--user', help='Username to import for (default: the only user).')
         parser.add_argument(
             '--on-duplicate', choices=['ask', *CHOICES.values()], default='ask',
-            help='What to do with likely duplicates without asking (default: ask).',
+            help='Answer every likely duplicate this way instead of asking (default: ask).',
         )
         parser.add_argument('--dry-run', action='store_true', help="Show what would happen; save nothing.")
 
     def handle(self, *args, files, user, on_duplicate, dry_run, **options):
-        owner = self._user(user)
+        owner = self.get_owner(user)
 
         incoming = []
         for path in files:
@@ -63,17 +91,6 @@ class Command(BaseCommand):
         ]:
             if count:
                 self.stdout.write(f'  {count} {label}')
-
-    def _user(self, username):
-        users = get_user_model().objects.all()
-        if username:
-            try:
-                return users.get(username=username)
-            except users.model.DoesNotExist:
-                raise CommandError(f'No user named {username!r}.')
-        if users.count() != 1:
-            raise CommandError('There is more than one user; say which with --user.')
-        return users.get()
 
     # --- questions
 

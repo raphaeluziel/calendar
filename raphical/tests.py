@@ -936,3 +936,82 @@ class IcsImportTests(TestCase):
             self.run_import(path)
         with self.assertRaisesMessage(CommandError, "Can't read"):
             self.run_import(str(Path(self.dir.name) / 'missing.ics'))
+
+
+class IcsExportTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user('raph', email='r@example.com', password='pw')
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        self.path = Path(self.dir.name) / 'out.ics'
+
+        local = lambda *a: timezone.make_aware(datetime.datetime(*a))
+        dentist = Event.objects.create(
+            owner=self.user, title='Dentist', start=local(2026, 11, 3, 14, 30),
+            end=local(2026, 11, 3, 15, 30), description='Bring card', color='#d32f2f')
+        Reminder.objects.create(event=dentist, method=Reminder.PUSH, minutes_before=15)
+        Reminder.objects.create(event=dentist, method=Reminder.EMAIL, minutes_before=1440)
+        Event.objects.create(owner=self.user, title='Vacation', all_day=True,
+                             start=local(2026, 11, 10, 0, 0), end=local(2026, 11, 12, 0, 0))
+        self.standup = Event.objects.create(
+            owner=self.user, title='Standup', start=local(2026, 10, 27, 9, 0),
+            end=local(2026, 10, 27, 9, 30), rrule='FREQ=WEEKLY;BYDAY=TU')
+        from . import series
+        series.delete_event(self.standup, series.THIS, local(2026, 11, 10, 9, 0))
+        moved = series.save_event(self.standup, {
+            'title': 'Standup (late)', 'start': local(2026, 11, 17, 10, 0),
+            'end': local(2026, 11, 17, 10, 30), 'all_day': False, 'color': '#1976d2',
+            'description': '', 'rrule': 'FREQ=WEEKLY;BYDAY=TU'}, [], series.THIS, local(2026, 11, 17, 9, 0))
+        self.assertEqual(moved.original_start, local(2026, 11, 17, 9, 0))
+
+    def export(self, *args):
+        import io
+        out = io.StringIO()
+        call_command('export_ics', str(self.path), *args, stdout=out)
+        return out.getvalue()
+
+    def test_file_contents(self):
+        output = self.export()
+        self.assertIn('Exported 3 event(s)', output)
+        text = self.path.read_text()
+        for expected in [
+            'BEGIN:VTIMEZONE', 'TZID:America/New_York',
+            'DTSTART;TZID=America/New_York:20261103T143000',
+            'DTSTART;VALUE=DATE:20261110', 'DTEND;VALUE=DATE:20261113',  # exclusive end
+            'RRULE:FREQ=WEEKLY;BYDAY=TU',
+            'EXDATE;TZID=America/New_York:20261110T090000',
+            'RECURRENCE-ID;TZID=America/New_York:20261117T090000',
+            'TRIGGER:-PT15M', 'ACTION:EMAIL', 'ATTENDEE:mailto:r@example.com',
+            'X-RAPHICAL-COLOR:#d32f2f',
+        ]:
+            self.assertIn(expected, text)
+        self.assertEqual(text.count(f'UID:raphical-event-{self.standup.pk}'), 2)  # series + changed date
+
+    def test_round_trip_into_empty_calendar(self):
+        self.export()
+        other = get_user_model().objects.create_user('copy', password='pw')
+        import io
+        call_command('import_ics', str(self.path), '--user', 'copy', stdout=io.StringIO())
+        copy = lambda u: sorted(
+            (e.title, e.start, e.end, e.all_day, e.color, e.description, e.rrule, sorted(e.exdates),
+             e.original_start, sorted((r.method, r.minutes_before) for r in e.reminders.all()))
+            for e in Event.objects.filter(owner=u))
+        self.assertEqual(copy(other), copy(self.user))
+
+    def test_reimport_into_same_calendar_is_all_duplicates(self):
+        self.export()
+        import io
+        out = io.StringIO()
+        with mock.patch('builtins.input') as fake_input:
+            call_command('import_ics', str(self.path), '--user', 'raph', stdout=out)
+        fake_input.assert_not_called()
+        self.assertIn('3 skipped (already on the calendar)', out.getvalue())
+
+    def test_refuses_to_overwrite_without_force(self):
+        from django.core.management.base import CommandError
+        self.path.write_text('keep me')
+        with self.assertRaisesMessage(CommandError, 'already exists'):
+            self.export()
+        self.assertEqual(self.path.read_text(), 'keep me')
+        self.export('--force')
+        self.assertIn('BEGIN:VCALENDAR', self.path.read_text())

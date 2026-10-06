@@ -1,7 +1,6 @@
 import time
 
-from django.core.management.base import BaseCommand
-
+from raphical.management.base import CalendarCommand
 from raphical.notifications import send_due_reminders
 
 # How often to look for due reminders. Reminders are set in whole minutes,
@@ -9,8 +8,27 @@ from raphical.notifications import send_due_reminders
 CHECK_EVERY_SECONDS = 30
 
 
-class Command(BaseCommand):
-    help = 'Keep running and send event reminders as they come due. Ctrl+C to stop.'
+class Command(CalendarCommand):
+    help = (
+        'Send the notification and email reminders set on events as each one comes due.\n'
+        'Keeps running, checking every 30 seconds, until you press Ctrl+C.'
+    )
+    usage_text = """
+During development you don't need to run this yourself: `python manage.py
+runserver` starts it automatically (see manage.py). On a server, run it as its
+own long-running service, or once a minute from cron with --once.
+
+Reminders more than 15 minutes overdue (for example, from a time this wasn't
+running) are skipped rather than sent late. Email reminders are printed in the
+terminal until a mail server is configured in config/settings.py.
+
+examples:
+  python manage.py send_reminders          keep running, sending reminders as they come due
+  python manage.py send_reminders --once   send whatever is due now, then exit
+
+  crontab line for a server (runs every minute):
+  * * * * * cd /path/to/calendar && venv/bin/python manage.py send_reminders --once
+"""
 
     def add_arguments(self, parser):
         parser.add_argument(
