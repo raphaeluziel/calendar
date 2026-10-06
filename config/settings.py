@@ -129,7 +129,7 @@ LOGOUT_REDIRECT_URL = 'login'
 
 # Used to build links in reminder emails.
 SITE_URL = 'http://127.0.0.1:8000'
-DEFAULT_FROM_EMAIL = 'Raphical <calendar@localhost>'
+DEFAULT_FROM_EMAIL = "Raphi's Calendar <calendar@localhost>"
 
 # Web Push (VAPID). The key is generated on first use; keep the file out of git.
 # The subject is sent to browser push services as a contact for this server.

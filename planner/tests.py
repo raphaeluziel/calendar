@@ -4,10 +4,12 @@ import tempfile
 from pathlib import Path
 from unittest import mock
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.management import call_command
 from django.test import TestCase, override_settings
+from django.shortcuts import resolve_url
 from django.urls import reverse
 from django.utils import timezone
 
@@ -37,7 +39,8 @@ class CalendarTests(TestCase):
     def test_login_required(self):
         for url in [reverse('planner:month'), reverse('planner:event_create')]:
             response = self.client.get(url)
-            self.assertRedirects(response, f"{reverse('login')}?next={url}")
+            self.assertRedirects(response, f"{resolve_url(settings.LOGIN_URL)}?next={url}",
+                                 fetch_redirect_response=False)
 
     def test_month_view_shows_events(self):
         self.client.force_login(self.user)

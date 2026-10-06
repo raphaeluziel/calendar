@@ -8,7 +8,7 @@ self.addEventListener('activate', event => event.waitUntil(self.clients.claim())
 self.addEventListener('push', event => {
   const data = event.data ? event.data.json() : {};
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Raphical', {
+    self.registration.showNotification(data.title || "Raphi's Calendar", {
       body: data.body || '',
       tag: data.tag || undefined,
       data: { url: data.url || '/' },

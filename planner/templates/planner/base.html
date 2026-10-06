@@ -59,7 +59,9 @@
     <span class="spacer"></span>
     {% if user.is_authenticated %}
       <a class="btn" href="{% url 'planner:notifications' %}">Notifications</a>
-      <form method="post" action="{% url 'logout' %}">
+      {# allauth's logout if the project uses allauth, otherwise Django's built-in one #}
+      {% url 'account_logout' as logout_url %}{% if not logout_url %}{% url 'logout' as logout_url %}{% endif %}
+      <form method="post" action="{{ logout_url }}">
         {% csrf_token %}
         <button class="btn" type="submit">Log out</button>
       </form>

@@ -236,14 +236,14 @@ def device_remove(request, pk):
 @require_POST
 def notification_test(request):
     if request.POST.get('kind') == 'email':
-        if notify.send_email(request.user, 'Raphical test email',
+        if notify.send_email(request.user, "Raphi's Calendar test email",
                              'Email reminders from your calendar are working.'):
             messages.success(request, f'Test email sent to {request.user.email}.')
         else:
             messages.error(request, 'Your account has no email address.')
     else:
-        count = notify.send_push(request.user, 'Raphical', 'Notifications are working.',
-                                 url='/', tag='test')
+        count = notify.send_push(request.user, "Raphi's Calendar", 'Notifications are working.',
+                                 url=reverse('planner:month'), tag='test')
         if count:
             messages.success(request, f'Test notification sent to {count} device(s).')
         else:
