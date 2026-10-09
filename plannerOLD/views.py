@@ -20,12 +20,12 @@ from .models import Event, PushSubscription, parse_occurrence_key
 
 
 @login_required
-def planner(request, year=None, month=None):
+def month(request, year=None, month=None):
     today = timezone.localdate()
     year = year or today.year
     month = month or today.month
     if not 1 <= month <= 12:
-        return redirect('planner:planner')
+        return redirect('planner:month')
 
     weeks = calendar.Calendar(firstweekday=6).monthdatescalendar(year, month)
     first_day, last_day = weeks[0][0], weeks[-1][-1]
@@ -55,7 +55,7 @@ def planner(request, year=None, month=None):
     prev_month = datetime.date(year, month, 1) - datetime.timedelta(days=1)
     next_month = datetime.date(year, month, 28) + datetime.timedelta(days=4)
 
-    return render(request, 'planner/planner.html', {
+    return render(request, 'planner/month.html', {
         'month_start': datetime.date(year, month, 1),
         'weeks': [
             [(day, holidays.get(day, []), by_day.get(day, [])) for day in week]
@@ -125,7 +125,7 @@ def _is_modal(request):
 
 def _done(request, start):
     """After a save or delete, go to the month the event is in."""
-    url = reverse('planner:planner', args=[start.year, start.month])
+    url = reverse('planner:month', args=[start.year, start.month])
     if _is_modal(request):
         return JsonResponse({'redirect': url})
     return redirect(url)
@@ -243,7 +243,7 @@ def notification_test(request):
             messages.error(request, 'Your account has no email address.')
     else:
         count = notify.send_push(request.user, "Raphi's Calendar", 'Notifications are working.',
-                                 url=reverse('planner:planner'), tag='test')
+                                 url=reverse('planner:month'), tag='test')
         if count:
             messages.success(request, f'Test notification sent to {count} device(s).')
         else:

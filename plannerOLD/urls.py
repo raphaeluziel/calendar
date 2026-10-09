@@ -5,9 +5,8 @@ from . import views
 app_name = 'planner'
 
 urlpatterns = [
-    path('', views.planner, name='planner'),
-    path('planner', views.planner, name='planner'),
-    path('<int:year>/<int:month>/', views.planner, name='planner'),
+    path('', views.month, name='month'),
+    path('<int:year>/<int:month>/', views.month, name='month'),
     path('events/new/', views.event_create, name='event_create'),
     path('events/<int:pk>/edit/', views.event_edit, name='event_edit'),
     path('events/<int:pk>/delete/', views.event_delete, name='event_delete'),

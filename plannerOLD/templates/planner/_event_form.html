@@ -78,7 +78,7 @@
 
   <div class="actions">
     <button class="btn btn-primary" type="submit">Save</button>
-    <a class="btn" href="{% url 'planner:planner' %}" data-close>Cancel</a>
+    <a class="btn" href="{% url 'planner:month' %}" data-close>Cancel</a>
     {% if event.pk %}
       <button class="btn btn-danger" type="submit" formnovalidate formaction="{{ delete_action }}"
               {% if not in_series %}onclick="return confirm('Delete this event?')"{% endif %}>Delete</button>

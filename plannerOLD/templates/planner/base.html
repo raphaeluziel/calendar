@@ -54,7 +54,7 @@
 </head>
 <body>
   <header>
-    <a class="brand" href="{% url 'planner:planner' %}">Raphi's Calendar</a>
+    <a class="brand" href="{% url 'planner:month' %}">Raphi's Calendar</a>
     {% block header %}{% endblock %}
     <span class="spacer"></span>
     {% if user.is_authenticated %}

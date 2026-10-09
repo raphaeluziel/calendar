@@ -37,7 +37,7 @@ class CalendarTests(TestCase):
         return self.client.post(url, data)
 
     def test_login_required(self):
-        for url in [reverse('planner:planner'), reverse('planner:event_create')]:
+        for url in [reverse('planner:month'), reverse('planner:event_create')]:
             response = self.client.get(url)
             self.assertRedirects(response, f"{resolve_url(settings.LOGIN_URL)}?next={url}",
                                  fetch_redirect_response=False)
@@ -49,7 +49,7 @@ class CalendarTests(TestCase):
             owner=self.user, title='Dentist', start=start,
             end=start + datetime.timedelta(hours=1),
         )
-        response = self.client.get(reverse('planner:planner', args=[2026, 10]))
+        response = self.client.get(reverse('planner:month', args=[2026, 10]))
         self.assertContains(response, 'Dentist')
         self.assertContains(response, 'October 2026')
 
@@ -62,7 +62,7 @@ class CalendarTests(TestCase):
             'color': '#0b8043',
             'description': '',
         })
-        self.assertRedirects(response, reverse('planner:planner', args=[2026, 11]))
+        self.assertRedirects(response, reverse('planner:month', args=[2026, 11]))
         event = Event.objects.get()
         self.assertEqual(event.owner, self.user)
         self.assertEqual(event.color, '#0b8043')
@@ -77,10 +77,10 @@ class CalendarTests(TestCase):
             'start_date': '2026-11-03', 'end_date': '2026-11-05',
             'color': '#d50000',
         })
-        self.assertRedirects(response, reverse('planner:planner', args=[2026, 11]))
+        self.assertRedirects(response, reverse('planner:month', args=[2026, 11]))
         event = Event.objects.get()
         self.assertTrue(event.all_day)
-        month = self.client.get(reverse('planner:planner', args=[2026, 11]))
+        month = self.client.get(reverse('planner:month', args=[2026, 11]))
         self.assertContains(month, 'Vacation', count=6)  # 3 days x (title attr + text)
 
     def test_timed_event_requires_times(self):
@@ -134,7 +134,7 @@ class CalendarTests(TestCase):
     def test_month_links_events_to_edit(self):
         self.client.force_login(self.user)
         event = self._make_event()
-        response = self.client.get(reverse('planner:planner', args=[2026, 11]))
+        response = self.client.get(reverse('planner:month', args=[2026, 11]))
         self.assertContains(response, reverse('planner:event_edit', args=[event.pk]))
 
     def test_edit_form_prefilled(self):
@@ -155,7 +155,7 @@ class CalendarTests(TestCase):
             'start_date': '2026-12-01', 'end_date': '2026-12-02',
             'color': '#e91e63',
         })
-        self.assertRedirects(response, reverse('planner:planner', args=[2026, 12]))
+        self.assertRedirects(response, reverse('planner:month', args=[2026, 12]))
         event.refresh_from_db()
         self.assertEqual(Event.objects.count(), 1)
         self.assertEqual((event.title, event.all_day, event.color), ('Moved', True, '#e91e63'))
@@ -175,7 +175,7 @@ class CalendarTests(TestCase):
             reverse('planner:event_delete', args=[event.pk]),
         )
         response = self.client.post(reverse('planner:event_delete', args=[event.pk]))
-        self.assertRedirects(response, reverse('planner:planner', args=[2026, 11]))
+        self.assertRedirects(response, reverse('planner:month', args=[2026, 11]))
         self.assertFalse(Event.objects.exists())
 
     def test_delete_requires_post(self):
@@ -196,7 +196,7 @@ class CalendarTests(TestCase):
 
     def test_events_added_by_clicking_a_day_only(self):
         self.client.force_login(self.user)
-        response = self.client.get(reverse('planner:planner', args=[2026, 10]))
+        response = self.client.get(reverse('planner:month', args=[2026, 10]))
         self.assertNotContains(response, '+ Create')
         self.assertContains(response, 'href="/events/new/?date=2026-10-06"')
 
@@ -410,7 +410,7 @@ class PopupFormTests(TestCase):
         }
 
     def test_month_page_has_dialog_and_form_script(self):
-        response = self.client.get(reverse('planner:planner', args=[2026, 11]))
+        response = self.client.get(reverse('planner:month', args=[2026, 11]))
         self.assertContains(response, '<dialog id="event-dialog"')
         self.assertContains(response, 'function initEventForm(form)')
 
@@ -429,7 +429,7 @@ class PopupFormTests(TestCase):
 
     def test_modal_save_returns_redirect_json(self):
         response = self.client.post(reverse('planner:event_create'), self.event_data(), **self.MODAL)
-        self.assertEqual(response.json(), {'redirect': reverse('planner:planner', args=[2026, 12])})
+        self.assertEqual(response.json(), {'redirect': reverse('planner:month', args=[2026, 12])})
         self.assertTrue(Event.objects.filter(title='Lunch').exists())
 
     def test_modal_save_with_errors_returns_form(self):
@@ -441,7 +441,7 @@ class PopupFormTests(TestCase):
     def test_modal_delete_returns_redirect_json(self):
         response = self.client.post(
             reverse('planner:event_delete', args=[self.event.pk]), **self.MODAL)
-        self.assertEqual(response.json(), {'redirect': reverse('planner:planner', args=[2026, 11])})
+        self.assertEqual(response.json(), {'redirect': reverse('planner:month', args=[2026, 11])})
         self.assertFalse(Event.objects.exists())
 
 
@@ -471,7 +471,7 @@ class HolidayTests(TestCase):
     def test_month_view_shows_holidays(self):
         user = get_user_model().objects.create_user('raph', password='pw')
         self.client.force_login(user)
-        response = self.client.get(reverse('planner:planner', args=[2026, 11]))
+        response = self.client.get(reverse('planner:month', args=[2026, 11]))
         self.assertContains(response, '<span class="holiday holiday-us"')
         self.assertContains(response, 'title="Thanksgiving Day"')
         self.assertContains(response, 'Veterans Day')
@@ -509,7 +509,7 @@ class HebrewCalendarTests(TestCase):
     def test_month_view_shows_jewish_holidays(self):
         user = get_user_model().objects.create_user('raph', password='pw')
         self.client.force_login(user)
-        response = self.client.get(reverse('planner:planner', args=[2026, 9]))
+        response = self.client.get(reverse('planner:month', args=[2026, 9]))
         self.assertContains(response, '<span class="holiday holiday-jewish"')
         self.assertContains(response, 'title="Yom Kippur (begins at sundown the evening before)"')
 
@@ -568,6 +568,24 @@ class RecurrenceRuleTests(TestCase):
                          'FREQ=DAILY;UNTIL=20261106T045959Z')
 
 
+    def test_same_rule_compares_dates_not_text(self):
+        from . import recurrence
+        dec14 = datetime.date(2025, 12, 14)
+        self.assertTrue(recurrence.same_rule('FREQ=YEARLY;INTERVAL=1', 'FREQ=YEARLY', dec14))
+        self.assertTrue(recurrence.same_rule('FREQ=YEARLY', 'FREQ=YEARLY;BYMONTH=12;BYMONTHDAY=14', dec14))
+        self.assertTrue(recurrence.same_rule('FREQ=WEEKLY;BYDAY=SU;WKST=SU', 'FREQ=WEEKLY;BYDAY=SU', dec14))
+        self.assertFalse(recurrence.same_rule('FREQ=YEARLY', 'FREQ=YEARLY;INTERVAL=2', dec14))
+        self.assertFalse(recurrence.same_rule('FREQ=YEARLY', 'FREQ=YEARLY;COUNT=3', dec14))
+        self.assertFalse(recurrence.same_rule('FREQ=YEARLY', '', dec14))
+        self.assertTrue(recurrence.same_rule('', '', dec14))
+
+    def test_equivalent_rule_shows_as_preset(self):
+        from . import recurrence
+        dec14 = datetime.date(2025, 12, 14)
+        self.assertEqual(recurrence.describe('FREQ=YEARLY;INTERVAL=1', dec14), 'Annually on December 14')
+        self.assertEqual(recurrence.form_initial('FREQ=YEARLY', dec14)['repeat'], 'yearly')
+
+
 class RepeatingEventTests(TestCase):
     MODAL = {'HTTP_X_MODAL': '1'}
 
@@ -585,7 +603,7 @@ class RepeatingEventTests(TestCase):
 
     def dates(self, year=2026, month=11, title=None):
         """Local start times of events shown in a month (optionally with a given title)."""
-        response = self.client.get(reverse('planner:planner', args=[year, month]))
+        response = self.client.get(reverse('planner:month', args=[year, month]))
         items = [i for day in response.context['weeks'] for _, _, events in day for i in events]
         return sorted({timezone.localtime(i.start).replace(tzinfo=None) for i in items
                        if title is None or i.title == title})
@@ -609,7 +627,7 @@ class RepeatingEventTests(TestCase):
     def test_shows_every_week_at_same_local_time_across_dst(self):
         expected = [datetime.datetime(2026, 11, d, 9, 0) for d in (3, 10, 17, 24)]
         self.assertEqual([d for d in self.dates() if d.month == 11], expected)
-        response = self.client.get(reverse('planner:planner', args=[2026, 11]))
+        response = self.client.get(reverse('planner:month', args=[2026, 11]))
         self.assertContains(response, 'aria-label="Repeats"')
 
     def test_create_repeating_event_from_form(self):
@@ -811,6 +829,38 @@ END:VCALENDAR
 """
 
 
+ICS_TWO_LESSONS = """BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//test//EN
+BEGIN:VEVENT
+UID:lesson-early
+SUMMARY:Lesson with DeAnna L.
+DTSTART;TZID=America/New_York:20261103T143000
+DTEND;TZID=America/New_York:20261103T160000
+END:VEVENT
+BEGIN:VEVENT
+UID:lesson-late
+SUMMARY:Lesson with DeAnna L.
+DTSTART;TZID=America/New_York:20261103T170000
+DTEND;TZID=America/New_York:20261103T180000
+END:VEVENT
+END:VCALENDAR
+"""
+
+# The 5:00 lesson moved to 5:15: closer to the 5:00 one than the 2:30 one.
+ICS_LATE_LESSON_MOVED = """BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//test//EN
+BEGIN:VEVENT
+UID:lesson-late
+SUMMARY:Lesson with DeAnna L.
+DTSTART;TZID=America/New_York:20261103T171500
+DTEND;TZID=America/New_York:20261103T181500
+END:VEVENT
+END:VCALENDAR
+"""
+
+
 class IcsImportTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user('raph', password='pw')
@@ -830,11 +880,12 @@ class IcsImportTests(TestCase):
         with mock.patch('builtins.input', side_effect=list(answers)) as fake_input:
             call_command('import_ics', *args, stdout=out)
         self.prompts = fake_input.call_count
+        self.prompt_texts = [call.args[0] for call in fake_input.call_args_list]
         return out.getvalue()
 
     def shown(self, year=2026, month=11):
         self.client.force_login(self.user)
-        response = self.client.get(reverse('planner:planner', args=[year, month]))
+        response = self.client.get(reverse('planner:month', args=[year, month]))
         return sorted((timezone.localtime(i.start).strftime('%m-%d %H:%M'), i.title)
                       for week in response.context['weeks'] for _, _, events in week for i in events)
 
@@ -867,12 +918,12 @@ class IcsImportTests(TestCase):
         self.assertIn('4 skipped (already on the calendar)', output)
         self.assertEqual(Event.objects.count(), 5)  # 4 + the changed Standup date
 
-    def test_duplicate_keep_existing(self):
+    def test_duplicate_skip(self):
         self.run_import(self.first)
-        output = self.run_import(self.second, answers=['1'])
+        output = self.run_import(self.second, answers=['s'])
         self.assertEqual(self.prompts, 1)
         self.assertIn('Possible duplicate on Tue, Nov 3, 2026', output)
-        self.assertIn('1 duplicates: kept existing', output)
+        self.assertIn('1 duplicates: skipped', output)
         self.assertFalse(Event.objects.filter(title='Dentist Appt').exists())
         self.assertTrue(Event.objects.filter(title='Gym').exists())
 
@@ -900,7 +951,7 @@ class IcsImportTests(TestCase):
 
     def test_invalid_answer_asks_again(self):
         self.run_import(self.first)
-        output = self.run_import(self.second, answers=['x', '1'])
+        output = self.run_import(self.second, answers=['x', 's'])
         self.assertIn('Please type one of', output)
         self.assertEqual(self.prompts, 2)
 
@@ -939,6 +990,89 @@ class IcsImportTests(TestCase):
             self.run_import(path)
         with self.assertRaisesMessage(CommandError, "Can't read"):
             self.run_import(str(Path(self.dir.name) / 'missing.ics'))
+
+
+    def test_identical_copy_skipped_when_day_has_same_title_twice(self):
+        path = self.write('lessons.ics', ICS_TWO_LESSONS)
+        self.run_import(path, answers=['b'])  # the two lessons look alike; keep both
+        self.assertEqual(Event.objects.count(), 2)
+        output = self.run_import(path)        # same file again: both identical, nothing asked
+        self.assertEqual(self.prompts, 0)
+        self.assertIn('2 skipped (already on the calendar)', output)
+        self.assertEqual(Event.objects.count(), 2)
+
+    def test_skip_answer_changes_nothing(self):
+        self.run_import(self.first)
+        before = sorted(Event.objects.values_list('title', 'start', 'end', 'description'))
+        output = self.run_import(self.second, answers=['s'])
+        self.assertEqual(self.prompt_texts,
+                         ['[s] skip, keep [2] imported, keep [b] both, or [m] merge? '])
+        self.assertIn('1 duplicates: skipped', output)
+        after = Event.objects.exclude(title='Gym').values_list('title', 'start', 'end', 'description')
+        self.assertEqual(sorted(after), before)
+
+    def test_on_duplicate_skip(self):
+        self.run_import(self.first)
+        output = self.run_import(self.second, '--on-duplicate', 'skip')
+        self.assertEqual(self.prompts, 0)
+        self.assertIn('1 duplicates: skipped', output)
+
+    def test_shows_the_existing_event_closest_in_time(self):
+        self.run_import(self.write('lessons.ics', ICS_TWO_LESSONS), answers=['b'])
+        output = self.run_import(self.write('moved.ics', ICS_LATE_LESSON_MOVED), answers=['s'])
+        self.assertEqual(self.prompts, 1)
+        self.assertIn('[1 existing] "Lesson with DeAnna L."  Tue, Nov 3 · 5:00 PM', output)
+
+
+    def test_import_folder(self):
+        folder = Path(self.dir.name)  # holds first.ics and second.ics
+        (folder / 'notes.txt').write_text('not a calendar')
+        (folder / 'first.ics:Zone.Identifier').write_text('[ZoneTransfer]')
+        (folder / 'sub').mkdir()
+        (folder / 'sub' / 'more.ICS').write_text(ICS_TWO_LESSONS.replace('\n', '\r\n'))
+        output = self.run_import(str(folder), answers=['b'])
+        self.assertIn('first.ics: 4 event(s)', output)
+        self.assertIn('second.ics: 2 event(s)', output)
+        self.assertNotIn('more.ICS', output)                # subfolders need --recursive
+        self.assertLess(output.index('first.ics'), output.index('second.ics'))
+        self.assertTrue(Event.objects.filter(title='Gym').exists())
+
+    def test_import_folder_recursive_and_mixed_with_files(self):
+        folder = Path(self.dir.name)
+        (folder / 'sub').mkdir()
+        (folder / 'sub' / 'more.ICS').write_text(ICS_TWO_LESSONS.replace('\n', '\r\n'))
+        output = self.run_import(str(folder), self.first, '--recursive', '--on-duplicate', 'both')
+        self.assertIn('more.ICS: 2 event(s)', output)
+        self.assertEqual(output.count('first.ics: 4 event(s)'), 1)  # named twice, read once
+
+    def test_empty_folder(self):
+        from django.core.management.base import CommandError
+        empty = Path(self.dir.name) / 'empty'
+        empty.mkdir()
+        with self.assertRaisesMessage(CommandError, 'No .ics files in'):
+            self.run_import(str(empty))
+
+
+    def test_same_birthday_with_differently_written_rules_is_skipped(self):
+        # The same yearly birthday, from two apps: "FREQ=YEARLY;INTERVAL=1" vs "FREQ=YEARLY".
+        birthday = """BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//test//EN
+BEGIN:VEVENT
+UID:{uid}
+SUMMARY:Yossi's Birthday - December 14
+DTSTART;VALUE=DATE:20251214
+DTEND;VALUE=DATE:20251215
+RRULE:{rule}
+END:VEVENT
+END:VCALENDAR
+"""
+        a = self.write('phone.ics', birthday.format(uid='a', rule='FREQ=YEARLY;INTERVAL=1'))
+        b = self.write('proton.ics', birthday.format(uid='b', rule='FREQ=YEARLY'))
+        output = self.run_import(a, b)
+        self.assertEqual(self.prompts, 0)
+        self.assertIn('1 skipped (already on the calendar)', output)
+        self.assertEqual(Event.objects.count(), 1)
 
 
 class IcsExportTests(TestCase):
@@ -1065,7 +1199,7 @@ class QueryCountTests(TestCase):
         self.assertEqual(self.queries(1, action), self.queries(6, action))
 
     def test_month_page(self):
-        self.assert_constant(lambda: self.client.get(reverse('planner:planner', args=[2026, 11])))
+        self.assert_constant(lambda: self.client.get(reverse('planner:month', args=[2026, 11])))
 
     def test_export(self):
         from .ics_export import export_calendar
@@ -1080,3 +1214,4 @@ class QueryCountTests(TestCase):
             with mock.patch('django.utils.timezone.now', return_value=due):
                 notifications.send_due_reminders()
         self.assert_constant(send)
+
